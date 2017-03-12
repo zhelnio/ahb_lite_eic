@@ -7,9 +7,12 @@ module test_eic;
 
     reg  [ 31:0] signal;
     reg  [ 31:0] mask;
-    wire [ 31:0] irq;
-    wire [ 7:0] irqNum;
-    wire [ 5:0] vector;
+
+    wire     [ 17 : 1 ] EIC_Offset;
+    wire     [  3 : 0 ] EIC_ShadowSet;
+    wire     [  7 : 0 ] EIC_Interrupt;
+    wire     [  5 : 0 ] EIC_Vector;
+
 
     eic 
     #(
@@ -18,15 +21,16 @@ module test_eic;
     )
     eic
     (
-        .CLK            (   HCLK        ),
-        .RESETn         (   HRESETn     ),
-        .signal         (   signal      ),
-        .EIC_Interrupt  (   irqNum      ),
-        .EIC_Vector     (   vector      ),
+        .CLK            ( HCLK          ),
+        .RESETn         ( HRESETn       ),
+        .signal         ( signal        ),
+        .EIC_Offset     ( EIC_Offset    ),
+        .EIC_ShadowSet  ( EIC_ShadowSet ),
+        .EIC_Interrupt  ( EIC_Interrupt ),
+        .EIC_Vector     ( EIC_Vector    ),
 
         //debug only
-        .request    (   irq         ),
-        .mask       (   mask        )
+        .mask           ( mask          )
     );
 
     parameter Tclk = 20;
