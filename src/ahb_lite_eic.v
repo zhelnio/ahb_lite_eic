@@ -9,7 +9,7 @@
 
 module eic
 #(
-    parameter   EIC_DIRECT_CHANNELS = 32,
+    parameter   EIC_DIRECT_CHANNELS = 31,
                 EIC_SENSE_CHANNELS  = 32,
                 EIC_TOTAL_CHANNELS  = EIC_DIRECT_CHANNELS + EIC_SENSE_CHANNELS
 )
@@ -17,7 +17,8 @@ module eic
     input       CLK,
     input       RESETn,
 
-    input      [ (EIC_TOTAL_CHANNELS - 1) : 0  ]  signal,  //signal inputs
+    //signal inputs
+    input      [ (EIC_TOTAL_CHANNELS - 1) : 0  ]  signal,  
 
     //EIC processor interface
     output     [ 17 : 1 ] EIC_Offset,
@@ -34,15 +35,16 @@ module eic
     //reg [ (EIC_TOTAL_CHANNELS - 1) : 0  ] mask;
     //reg [ (EIC_TOTAL_CHANNELS - 1) : 0  ] requestWR;
     //reg [ (EIC_TOTAL_CHANNELS - 1) : 0  ] requestIn;
-    wire [ (EIC_TOTAL_CHANNELS - 1) : 0  ] request;
+    
 
     //debug only
-    wire [ (EIC_TOTAL_CHANNELS   - 1) : 0  ] requestWR = 32'b0;
-    wire [ (EIC_TOTAL_CHANNELS   - 1) : 0  ] requestIn = 32'b0;
+    wire [   (EIC_TOTAL_CHANNELS - 1) : 0  ] requestWR = 32'b0;
+    wire [   (EIC_TOTAL_CHANNELS - 1) : 0  ] requestIn = 32'b0;
     wire [ 2*(EIC_TOTAL_CHANNELS - 1) : 0  ] senceMask = 32'hFFFFFFFF; //low level
 
     //interrupt input logic (signal -> request)
-    wire [ (EIC_SENSE_CHANNELS   - 1) : 0  ] sensed;
+    wire [ (EIC_TOTAL_CHANNELS - 1) : 0  ] request;
+    wire [ (EIC_SENSE_CHANNELS - 1) : 0  ] sensed;
     generate 
         genvar i;
 
@@ -85,15 +87,17 @@ module eic
     endgenerate 
 
     //interrupt priority decode (request -> irqNumber)
-    wire     [ 255 : 0 ] irqRequest = { 1'b0, { 254 - EIC_TOTAL_CHANNELS { 1'b0 } }, request };
-    wire      [  7 : 0 ] irqNumber;
+    wire      [ 63 : 0 ] irqRequest = { 1'b0, { 63 - EIC_TOTAL_CHANNELS { 1'b0 } }, request };
     wire                 irqDetected;
 
-    priority_encoder255 priority_encoder
+    wire      [  5 : 0 ] irqNumberL;
+    wire      [  7 : 0 ] irqNumber  = { 2'b0, irqNumberL };
+
+    priority_encoder64 priority_encoder //use priority_encoder255 for more interrupt inputs
     ( 
         .in     ( irqRequest  ), 
         .detect ( irqDetected ),
-        .out    ( irqNumber   )
+        .out    ( irqNumberL  )
     );
 
     //interrupt priority decode (irqNumber -> handler_params)
