@@ -20,6 +20,7 @@
 `define EIC_REG_EIIPR_0     12  // external interrupt input pin register (31 - 0 )
 `define EIC_REG_EIIPR_1     13  // external interrupt input pin register (63 - 32)
 
+`define EIC_EICR_WIDTH      1   // control register width
 `define EIC_ADDR_WIDTH      4   // register addr width
 `define EIC_ALIGNED_WIDTH   64  // summary total aligned reg width
 
@@ -57,6 +58,7 @@ module eic
     output     [  3 : 0 ] EIC_ShadowSet,
     output     [  7 : 0 ] EIC_Interrupt,
     output     [  5 : 0 ] EIC_Vector,
+    output                EIC_Present
 );
     //registers interface part
     wire       [                     31 : 0  ]  EICR;
@@ -66,6 +68,7 @@ module eic
     wire       [ `EIC_ALIGNED_WIDTH - 1 : 0  ]  EIIPR;
 
     //register involved part
+    reg                                   EICR_inv;
     reg        [ `EIC_CHANNELS - 1 : 0 ]  EIMSK_inv;
     reg        [ `EIC_CHANNELS - 1 : 0 ]  EISMSK_inv;
     wire       [ `EIC_CHANNELS - 1 : 0 ]  EIFR_inv;
@@ -75,6 +78,9 @@ module eic
     assign EISMSK = { { `EIC_ALIGNED_WIDTH - 2*`EIC_SENSE_CHANNELS { 1'b0 } }, EISMSK_inv}
     assign EIFR   = { 1'b0, { `EIC_ALIGNED_WIDTH - `EIC_CHANNELS - 1 { 1'b0 } }, EIFR_inv };
     assign EIIPR  = { { `EIC_ALIGNED_WIDTH - `EIC_CHANNELS { 1'b0 } }, signal };
+
+    assign EICR         = { { 32 - `EIC_EICR_WIDTH { 1'b0 } }, EICR_inv };
+    assign EIC_Present  = EICR_inv[0];
 
     //register read operations
     always @ (*)
@@ -96,45 +102,48 @@ module eic
         endcase
 
     //register write operations
-    wire       [ `EIC_CHANNELS - 1 : 0 ]  EIFR_wr_data;
-    wire       [ `EIC_CHANNELS - 1 : 0 ]  EIFR_wr_enable;
-    wire       [ `EIC_CHANNELS - 1 : 0 ]  EIMSK_new;
-    wire       [ `EIC_CHANNELS - 1 : 0 ]  EISMSK_new;
+    wire  [ `EIC_CHANNELS   - 1 : 0 ]  EIFR_wr_data;
+    wire  [ `EIC_CHANNELS   - 1 : 0 ]  EIFR_wr_enable;
+    wire  [ `EIC_CHANNELS   - 1 : 0 ]  EIMSK_new;
+    wire  [ `EIC_CHANNELS   - 1 : 0 ]  EISMSK_new;
+    wire  [ `EIC_EICR_WIDTH - 1 : 0 ]  EICR_new;
 
-    wire [11:0] write_cmd;
-    partial_new #(.USED(`EIC_CHANNELS)) pn_EIFR_wr_dt (.in(EIFR_inv),   .out(EIFR_wr_data),   .word(write_data), cmd(write_cmd[ 2:0]));
-    partial_new #(.USED(`EIC_CHANNELS)) pn_EIFR_wr_en (.in(EIFR_inv),   .out(EIFR_wr_enable), .word(write_data), cmd(write_cmd[ 5:3]));
-    partial_new #(.USED(`EIC_CHANNELS)) pn_EIMSK      (.in(EIMSK_inv),  .out(EIMSK_new),      .word(write_data), cmd(write_cmd[ 8:6]));
-    partial_new #(.USED(`EIC_CHANNELS)) pn_EISMSK     (.in(EISMSK_inv), .out(EISMSK_new),     .word(write_data), cmd(write_cmd[11:9]));
+    wire [14:0] write_cmd;
+    partial_new #(.USED(`EIC_CHANNELS)) pn_EIFR_wr_dt (.in(EIFR_inv),   .out(EIFR_wr_data),   .word(write_data), cmd(write_cmd[ 2:0 ]));
+    partial_new #(.USED(`EIC_CHANNELS)) pn_EIFR_wr_en (.in(EIFR_inv),   .out(EIFR_wr_enable), .word(write_data), cmd(write_cmd[ 5:3 ]));
+    partial_new #(.USED(`EIC_CHANNELS)) pn_EIMSK      (.in(EIMSK_inv),  .out(EIMSK_new),      .word(write_data), cmd(write_cmd[ 8:6 ]));
+    partial_new #(.USED(`EIC_CHANNELS)) pn_EISMSK     (.in(EISMSK_inv), .out(EISMSK_new),     .word(write_data), cmd(write_cmd[11:9 ]));
+    partial_new #(.USED(`EIC_EICR_WIDTH)) pn_EICR     (.in(EICR_inv),   .out(EICR_new),       .word(write_data), cmd(write_cmd[14:12]));
 
     wire       [ `EIC_ADDR_WIDTH - 1 : 0 ]  __write_addr = write_enable ? write_addr : `EIC_REG_NONE;
 
     always @ (*) begin
         case(__write_addr)
-             default          :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_NONE, EIC_C_NONE };
-            `EIC_REG_EICR     :  ;  //TODO
-            `EIC_REG_EIMSK_0  :  write_cmd = { EIC_C_NONE, EIC_C_VAL0, EIC_C_NONE, EIC_C_NONE };
-            `EIC_REG_EIMSK_1  :  write_cmd = { EIC_C_NONE, EIC_C_VAL1, EIC_C_NONE, EIC_C_NONE };
-            `EIC_REG_EIFR_0   :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_SET0, EIC_C_VAL0 };
-            `EIC_REG_EIFR_1   :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_SET1, EIC_C_VAL1 };
-            `EIC_REG_EIFRS_0  :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_SET0, EIC_C_SET0 };
-            `EIC_REG_EIFRS_1  :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_SET1, EIC_C_SET1 };
-            `EIC_REG_EIFRC_0  :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_VAL0, EIC_C_CLR0 };
-            `EIC_REG_EIFRC_1  :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_VAL1, EIC_C_CLR1 };
-            `EIC_REG_EISMSK_0 :  write_cmd = { EIC_C_VAL0, EIC_C_NONE, EIC_C_NONE, EIC_C_NONE };
-            `EIC_REG_EISMSK_1 :  write_cmd = { EIC_C_VAL1, EIC_C_NONE, EIC_C_NONE, EIC_C_NONE };
+             default          :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_NONE, EIC_C_NONE, EIC_C_NONE };
+            `EIC_REG_EICR     :  write_cmd = { EIC_C_VAL0, EIC_C_NONE, EIC_C_VAL0, EIC_C_NONE, EIC_C_NONE };
+            `EIC_REG_EIMSK_0  :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_VAL0, EIC_C_NONE, EIC_C_NONE };
+            `EIC_REG_EIMSK_1  :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_VAL1, EIC_C_NONE, EIC_C_NONE };
+            `EIC_REG_EIFR_0   :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_NONE, EIC_C_SET0, EIC_C_VAL0 };
+            `EIC_REG_EIFR_1   :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_NONE, EIC_C_SET1, EIC_C_VAL1 };
+            `EIC_REG_EIFRS_0  :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_NONE, EIC_C_SET0, EIC_C_SET0 };
+            `EIC_REG_EIFRS_1  :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_NONE, EIC_C_SET1, EIC_C_SET1 };
+            `EIC_REG_EIFRC_0  :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_NONE, EIC_C_VAL0, EIC_C_CLR0 };
+            `EIC_REG_EIFRC_1  :  write_cmd = { EIC_C_NONE, EIC_C_NONE, EIC_C_NONE, EIC_C_VAL1, EIC_C_CLR1 };
+            `EIC_REG_EISMSK_0 :  write_cmd = { EIC_C_NONE, EIC_C_VAL0, EIC_C_NONE, EIC_C_NONE, EIC_C_NONE };
+            `EIC_REG_EISMSK_1 :  write_cmd = { EIC_C_NONE, EIC_C_VAL1, EIC_C_NONE, EIC_C_NONE, EIC_C_NONE };
         endcase
     end
 
     always @ (posedge CLK)
         if(~RESETn) begin
-                EIMSK_inv  <= { `EIC_CHANNELS { 1'b0 } };
-                EISMSK_inv <= { `EIC_CHANNELS { 1'b0 } };
+                EIMSK_inv  <= { `EIC_CHANNELS   { 1'b0 } };
+                EISMSK_inv <= { `EIC_CHANNELS   { 1'b0 } };
+                EICR_inv   <= { `EIC_EICR_WIDTH { 1'b0 } };
             end
         else
             case(__write_addr)
                 default           :  ;
-                `EIC_REG_EICR     :  ;  //TODO
+                `EIC_REG_EICR     :  EICR_inv   <= EICR_new;
                 `EIC_REG_EIMSK_0  :  EIMSK_inv  <= EIMSK_new;
                 `EIC_REG_EIMSK_1  :  EIMSK_inv  <= EIMSK_new;
                 `EIC_REG_EISMSK_0 :  EISMSK_inv <= EISMSK_new;
