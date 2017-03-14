@@ -20,7 +20,7 @@
 `define EIC_REG_EIIPR_1     12  // external interrupt input pin register (63 - 32)
 
 `define EIC_ADDR_WIDTH      4   // register addr width
-`define EIC_TOTAL_WIDTH     64  // max total aligned reg width
+`define EIC_ALIGNED_WIDTH   64  // summary total aligned reg width
 
 `define EIC_DIRECT_CHANNELS 31  // 0-31
 `define EIC_SENSE_CHANNELS  32  // 0-32
@@ -33,14 +33,14 @@ module eic
     input       RESETn,
 
     //signal inputs (should be synchronized!)
-    input      [ (`EIC_CHANNELS - 1) : 0  ]  signal,
+    input      [ ( `EIC_CHANNELS - 1  ) : 0  ]  signal,
 
     //register access
-    input      [    (`EIC_ADDR_WIDTH - 1) : 0  ]  read_addr,
-    output     [                      31  : 0  ]  read_data,
-    input      [    (`EIC_ADDR_WIDTH - 1) : 0  ]  write_addr,
-    output     [                      31  : 0  ]  write_data,
-    input                                         write_enable,
+    input      [ ( `EIC_ADDR_WIDTH - 1) : 0  ]  read_addr,
+    output     [                     31 : 0  ]  read_data,
+    input      [ ( `EIC_ADDR_WIDTH - 1) : 0  ]  write_addr,
+    output     [                     31 : 0  ]  write_data,
+    input                                       write_enable,
 
     //EIC processor interface
     output     [ 17 : 1 ] EIC_Offset,
@@ -49,11 +49,11 @@ module eic
     output     [  5 : 0 ] EIC_Vector,
 );
     //registers interface part
-    wire       [                         31 : 0  ]  EICR;
-    wire       [ (  `EIC_TOTAL_WIDTH   - 1) : 0  ]  EIMSK;
-    wire       [ (  `EIC_TOTAL_WIDTH   - 1) : 0  ]  EIFR;
-    wire       [ (  `EIC_TOTAL_WIDTH   - 1) : 0  ]  EISMSK;
-    wire       [ (  `EIC_TOTAL_WIDTH   - 1) : 0  ]  EIIPR;
+    wire       [                        31 : 0  ]  EICR;
+    wire       [ ( `EIC_ALIGNED_WIDTH - 1) : 0  ]  EIMSK;
+    wire       [ ( `EIC_ALIGNED_WIDTH - 1) : 0  ]  EIFR;
+    wire       [ ( `EIC_ALIGNED_WIDTH - 1) : 0  ]  EISMSK;
+    wire       [ ( `EIC_ALIGNED_WIDTH - 1) : 0  ]  EIIPR;
 
     //register involved part
     wire       wr_shift;
@@ -65,8 +65,8 @@ module eic
 
     //register align and combination
     wire   [ (  `EIC_CHANNELS - 1) : 0 ]  EIFR_used;
-    assign EIFR   = { 1'b0, { `EIC_TOTAL_WIDTH - `EIC_CHANNELS - 1 { 1'b0 } }, EIFR_used };
-    assign EIIPR  = { { `EIC_TOTAL_WIDTH - `EIC_CHANNELS { 1'b0 } }, signal };
+    assign EIFR   = { 1'b0, { `EIC_ALIGNED_WIDTH - `EIC_CHANNELS - 1 { 1'b0 } }, EIFR_used };
+    assign EIIPR  = { { `EIC_ALIGNED_WIDTH - `EIC_CHANNELS { 1'b0 } }, signal };
 
     //register read operations
     always @ (*)
@@ -100,15 +100,15 @@ module eic
         endcase
 
 
-    wire       [ (  `EIC_TOTAL_WIDTH - 1) : 0 ]  EIFR_wr_data;
-    wire       [ (  `EIC_TOTAL_WIDTH - 1) : 0 ]  EIFR_wr_enable;
+    wire       [ (  `EIC_ALIGNED_WIDTH - 1) : 0 ]  EIFR_wr_data;
+    wire       [ (  `EIC_ALIGNED_WIDTH - 1) : 0 ]  EIFR_wr_enable;
 
     // todo: change fixed width values
     always @ (*) begin
         case(write_addr)
-            default          :  EIFR_wr_enable = { `EIC_TOTAL_WIDTH { 1'b0 } };
-            `EIC_REG_EIFR_0  :  EIFR_wr_enable = { `EIC_TOTAL_WIDTH { 1'b0 } } | (~32'b0);
-            `EIC_REG_EIFR_1  :  EIFR_wr_enable = { `EIC_TOTAL_WIDTH { 1'b0 } } | (~32'b0 << 16);
+            default          :  EIFR_wr_enable = { `EIC_ALIGNED_WIDTH { 1'b0 } };
+            `EIC_REG_EIFR_0  :  EIFR_wr_enable = { `EIC_ALIGNED_WIDTH { 1'b0 } } | (~32'b0);
+            `EIC_REG_EIFR_1  :  EIFR_wr_enable = { `EIC_ALIGNED_WIDTH { 1'b0 } } | (~32'b0 << 16);
             `EIC_REG_EIFRS_0 :  EIFR_wr_enable = { 32'b0, write_data };
             `EIC_REG_EIFRS_1 :  EIFR_wr_enable = { write_data, 32'b0 };
             `EIC_REG_EIFRC_0 :  EIFR_wr_enable = { 32'b0, write_data };
@@ -116,13 +116,13 @@ module eic
         endcase
 
         case(write_addr)
-            default          :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b0 } };
-            `EIC_REG_EIFR_0  :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b0 } } | (~32'b0);
-            `EIC_REG_EIFR_1  :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b0 } } | (~32'b0 << 16);
-            `EIC_REG_EIFRS_0 :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b1 } };
-            `EIC_REG_EIFRS_1 :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b1 } };
-            `EIC_REG_EIFRC_0 :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b0 } };
-            `EIC_REG_EIFRC_1 :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b0 } };
+            default          :  EIFR_wr_data = { `EIC_ALIGNED_WIDTH { 1'b0 } };
+            `EIC_REG_EIFR_0  :  EIFR_wr_data = { `EIC_ALIGNED_WIDTH { 1'b0 } } | (~32'b0);
+            `EIC_REG_EIFR_1  :  EIFR_wr_data = { `EIC_ALIGNED_WIDTH { 1'b0 } } | (~32'b0 << 16);
+            `EIC_REG_EIFRS_0 :  EIFR_wr_data = { `EIC_ALIGNED_WIDTH { 1'b1 } };
+            `EIC_REG_EIFRS_1 :  EIFR_wr_data = { `EIC_ALIGNED_WIDTH { 1'b1 } };
+            `EIC_REG_EIFRC_0 :  EIFR_wr_data = { `EIC_ALIGNED_WIDTH { 1'b0 } };
+            `EIC_REG_EIFRC_1 :  EIFR_wr_data = { `EIC_ALIGNED_WIDTH { 1'b0 } };
         endcase
     end
 
