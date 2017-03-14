@@ -22,18 +22,18 @@
 `define EIC_ADDR_WIDTH      4   // register addr width
 `define EIC_TOTAL_WIDTH     64  // max total aligned reg width
 
+`define EIC_DIRECT_CHANNELS 31  // 0-31
+`define EIC_SENSE_CHANNELS  32  // 0-32
+
+`define EIC_CHANNELS        (`EIC_DIRECT_CHANNELS + `EIC_SENSE_CHANNELS)
+
 module eic
-#(
-    parameter   EIC_DIRECT_CHANNELS = 31,   /* 0-31 */
-                EIC_SENSE_CHANNELS  = 32,   /* 0-32 */
-                EIC_TOTAL_CHANNELS  = EIC_DIRECT_CHANNELS + EIC_SENSE_CHANNELS
-)
 (
     input       CLK,
     input       RESETn,
 
     //signal inputs (should be synchronized!)
-    input      [ (EIC_TOTAL_CHANNELS - 1) : 0  ]  signal,
+    input      [ (`EIC_CHANNELS - 1) : 0  ]  signal,
 
     //register access
     input      [    (`EIC_ADDR_WIDTH - 1) : 0  ]  read_addr,
@@ -60,13 +60,13 @@ module eic
     wire       EIMSK_WR;
     wire       EISMSK_WR;
 
-    aligned_reg64 #(.USED(  EIC_TOTAL_CHANNELS)) EIMSK_inv  (CLK, RESETn, EIMSK,  write_data, wr_shift, EIMSK_WR );
-    aligned_reg64 #(.USED(2*EIC_SENSE_CHANNELS)) EISMSK_inv (CLK, RESETn, EISMSK, write_data, wr_shift, EISMSK_WR);
+    aligned_reg64 #(.USED(  `EIC_CHANNELS)) EIMSK_inv  (CLK, RESETn, EIMSK,  write_data, wr_shift, EIMSK_WR );
+    aligned_reg64 #(.USED(2*`EIC_SENSE_CHANNELS)) EISMSK_inv (CLK, RESETn, EISMSK, write_data, wr_shift, EISMSK_WR);
 
     //register align and combination
-    wire   [ (  EIC_TOTAL_CHANNELS - 1) : 0 ]  EIFR_used;
-    assign EIFR   = { 1'b0, { `EIC_TOTAL_WIDTH - EIC_TOTAL_CHANNELS - 1 { 1'b0 } }, EIFR_used };
-    assign EIIPR  = { { `EIC_TOTAL_WIDTH - EIC_TOTAL_CHANNELS { 1'b0 } }, signal };
+    wire   [ (  `EIC_CHANNELS - 1) : 0 ]  EIFR_used;
+    assign EIFR   = { 1'b0, { `EIC_TOTAL_WIDTH - `EIC_CHANNELS - 1 { 1'b0 } }, EIFR_used };
+    assign EIIPR  = { { `EIC_TOTAL_WIDTH - `EIC_CHANNELS { 1'b0 } }, signal };
 
     //register read operations
     always @ (*)
@@ -127,11 +127,11 @@ module eic
     end
 
     //interrupt input logic (signal -> request)
-    wire [ (EIC_SENSE_CHANNELS - 1) : 0  ] sensed;
+    wire [ (`EIC_SENSE_CHANNELS - 1) : 0  ] sensed;
     generate 
         genvar i;
 
-        for (i = 0; i < EIC_SENSE_CHANNELS; i = i + 1)
+        for (i = 0; i < `EIC_SENSE_CHANNELS; i = i + 1)
         begin : sirq
             interrupt_sence sense 
             (
@@ -154,7 +154,7 @@ module eic
             );
         end
 
-        for (i = EIC_SENSE_CHANNELS; i < EIC_TOTAL_CHANNELS; i = i + 1)
+        for (i = `EIC_SENSE_CHANNELS; i < `EIC_CHANNELS; i = i + 1)
         begin : irq
             interrupt_channel channel 
             (
