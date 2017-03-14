@@ -221,24 +221,27 @@ module partial_new
     input       [       31 : 0 ] word,  //new data value
     input       [        2 : 0 ] cmd    //update command (see EIC_C_* defines)
 );
-    localparam lng = (USED > 32) ? 1'b1 : 1'b0;
-
     always @ (*) begin
-        case({cmd, lng})
-            default               : out = in;
-            { `EIC_C_CLR0, 1'b1 } : out = { in  [ USED-32-1 : 0 ], 32'b0 };
-            { `EIC_C_CLR0, 1'b0 } : out = { USED {1'b0} };
-            { `EIC_C_CLR1, 1'b1 } : out = { USED-32-1 { 1'b0 }, in [ 31 : 0 ] };
-            { `EIC_C_CLR1, 1'b0 } : out = in;
-            { `EIC_C_SET0, 1'b1 } : out = { in  [ USED-32-1 : 0 ], ~32'b0 };
-            { `EIC_C_SET0, 1'b0 } : out = ~{ USED {1'b0} };
-            { `EIC_C_SET1, 1'b1 } : out = { ~{USED-32-1 { 1'b0 }}, in [ 31 : 0 ] };
-            { `EIC_C_SET1, 1'b0 } : out = in;
-            { `EIC_C_VAL0, 1'b1 } : out = (USED > 32) ? { in [ USED-32-1 : 0 ], word };
-            { `EIC_C_VAL0, 1'b0 } : out = word [ USED-1    : 0 ];
-            { `EIC_C_VAL1, 1'b1 } : out = (USED > 32) ? { word [ USED-32-1 : 0 ], in [ 31 : 0 ] };
-            { `EIC_C_VAL1, 1'b0 } : out = in;
-        endcase
+        if(USED =< 32)
+            case({cmd, lng})
+                default     : out = in;
+                `EIC_C_CLR0 : out = { USED {1'b0} };
+                `EIC_C_CLR1 : out = in;
+                `EIC_C_SET0 : out = ~{ USED {1'b0} };
+                `EIC_C_SET1 : out = in;
+                `EIC_C_VAL0 : out = word [ USED-1    : 0 ];
+                `EIC_C_VAL1 : out = in;
+            endcase
+        else
+            case(cmd)
+                default     : out = in;
+                `EIC_C_CLR0 : out = { in  [ USED-32-1 : 0 ],    32'b0           };
+                `EIC_C_CLR1 : out = { USED-32-1 { 1'b0 },       in [ 31 : 0 ]   };
+                `EIC_C_SET0 : out = { in  [ USED-32-1 : 0 ],    ~32'b0          };
+                `EIC_C_SET1 : out = { ~{USED-32-1 { 1'b0 }},    in [ 31 : 0 ]   };
+                `EIC_C_VAL0 : out = { in [ USED-32-1 : 0 ],     word            };
+                `EIC_C_VAL1 : out = { word [ USED-32-1 : 0 ],   in [ 31 : 0 ]   };
+            endcase
     end
 endmodule
 
