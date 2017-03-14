@@ -20,16 +20,23 @@
 `define EIC_REG_EIIPR_0     12  // external interrupt input pin register (31 - 0 )
 `define EIC_REG_EIIPR_1     13  // external interrupt input pin register (63 - 32)
 
+//reg width params
 `define EIC_EICR_WIDTH      1   // control register width
 `define EIC_ADDR_WIDTH      4   // register addr width
 `define EIC_ALIGNED_WIDTH   64  // summary total aligned reg width
 
-`define EIC_DIRECT_CHANNELS 31  // 0-31
-`define EIC_SENSE_CHANNELS  32  // 0-32
+
+//default interrupt count
+`ifndef EIC_DIRECT_CHANNELS
+    `define EIC_DIRECT_CHANNELS 31  // 0-31
+`endif
+`ifndef EIC_SENSE_CHANNELS
+    `define EIC_SENSE_CHANNELS  32  // 0-32
+`endif
 
 `define EIC_CHANNELS        (`EIC_DIRECT_CHANNELS + `EIC_SENSE_CHANNELS)
 
-//partial_new module commands
+//new_reg_value module commands
 `define EIC_C_NONE  3'b000   //no changes
 `define EIC_C_CLR0  3'b001   //clear all in word0
 `define EIC_C_CLR1  3'b010   //clear all in word1
@@ -109,11 +116,11 @@ module eic
     wire  [ `EIC_EICR_WIDTH - 1 : 0 ]  EICR_new;
 
     wire [14:0] write_cmd;
-    partial_new #(.USED(`EIC_CHANNELS)) pn_EIFR_wr_dt (.in(EIFR_inv),   .out(EIFR_wr_data),   .word(write_data), cmd(write_cmd[ 2:0 ]));
-    partial_new #(.USED(`EIC_CHANNELS)) pn_EIFR_wr_en (.in(EIFR_inv),   .out(EIFR_wr_enable), .word(write_data), cmd(write_cmd[ 5:3 ]));
-    partial_new #(.USED(`EIC_CHANNELS)) pn_EIMSK      (.in(EIMSK_inv),  .out(EIMSK_new),      .word(write_data), cmd(write_cmd[ 8:6 ]));
-    partial_new #(.USED(`EIC_CHANNELS)) pn_EISMSK     (.in(EISMSK_inv), .out(EISMSK_new),     .word(write_data), cmd(write_cmd[11:9 ]));
-    partial_new #(.USED(`EIC_EICR_WIDTH)) pn_EICR     (.in(EICR_inv),   .out(EICR_new),       .word(write_data), cmd(write_cmd[14:12]));
+    new_reg_value #(.USED(`EIC_CHANNELS))   nrv_EIFR_dt (.in(EIFR_inv),   .out(EIFR_wr_data),   .word(write_data), cmd(write_cmd[ 2:0 ]));
+    new_reg_value #(.USED(`EIC_CHANNELS))   nrv_EIFR_wr (.in(EIFR_inv),   .out(EIFR_wr_enable), .word(write_data), cmd(write_cmd[ 5:3 ]));
+    new_reg_value #(.USED(`EIC_CHANNELS))   nrv_EIMSK   (.in(EIMSK_inv),  .out(EIMSK_new),      .word(write_data), cmd(write_cmd[ 8:6 ]));
+    new_reg_value #(.USED(`EIC_CHANNELS))   nrv_EISMSK  (.in(EISMSK_inv), .out(EISMSK_new),     .word(write_data), cmd(write_cmd[11:9 ]));
+    new_reg_value #(.USED(`EIC_EICR_WIDTH)) nrv_EICR    (.in(EICR_inv),   .out(EICR_new),       .word(write_data), cmd(write_cmd[14:12]));
 
     wire       [ `EIC_ADDR_WIDTH - 1 : 0 ]  __write_addr = write_enable ? write_addr : `EIC_REG_NONE;
 
@@ -220,7 +227,7 @@ module eic
 endmodule
 
 //helper for partialy updating register value
-module partial_new
+module new_reg_value
 #(
     parameter USED = 8
 )
