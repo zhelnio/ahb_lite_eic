@@ -12,8 +12,8 @@
 `define EIC_REG_EIFR_1      4   // external interrupt flag register (63 - 32)
 `define EIC_REG_EIFRS_0     5   // external interrupt flag register, bit set (31 - 0 )
 `define EIC_REG_EIFRS_1     6   // external interrupt flag register, bit set (63 - 32)
-`define EIC_REG_EIFRR_0     7   // external interrupt flag register, bit clear (31 - 0 )
-`define EIC_REG_EIFRR_1     8   // external interrupt flag register, bit clear (63 - 32)
+`define EIC_REG_EIFRC_0     7   // external interrupt flag register, bit clear (31 - 0 )
+`define EIC_REG_EIFRC_1     8   // external interrupt flag register, bit clear (63 - 32)
 `define EIC_REG_EISMSK_0    9   // external interrupt sense mask register (31 - 0 )
 `define EIC_REG_EISMSK_1    10  // external interrupt sense mask register (63 - 32)
 `define EIC_REG_EIIPR_0     11  // external interrupt input pin register (31 - 0 )
@@ -79,8 +79,8 @@ module eic
             `EIC_REG_EIFR_1   :  read_data = EIFR   [ 63:32 ];
             `EIC_REG_EIFRS_0  :  read_data = EIFR   [ 31:0  ];
             `EIC_REG_EIFRS_1  :  read_data = EIFR   [ 63:32 ];
-            `EIC_REG_EIFRR_0  :  read_data = 32'b0;
-            `EIC_REG_EIFRR_1  :  read_data = 32'b0;
+            `EIC_REG_EIFRC_0  :  read_data = 32'b0;
+            `EIC_REG_EIFRC_1  :  read_data = 32'b0;
             `EIC_REG_EISMSK_0 :  read_data = EISMSK [ 31:0  ];
             `EIC_REG_EISMSK_1 :  read_data = EISMSK [ 63:32 ];
             `EIC_REG_EIIPR_0  :  read_data = EIIPR  [ 31:0  ];
@@ -99,32 +99,30 @@ module eic
             `EIC_REG_EISMSK_1 :  mask_cmd = 3'b101;
         endcase
 
-    
-
 
     wire       [ (  `EIC_TOTAL_WIDTH - 1) : 0 ]  EIFR_wr_data;
     wire       [ (  `EIC_TOTAL_WIDTH - 1) : 0 ]  EIFR_wr_enable;
 
-    // STOPPED HERE, continue tomorrow
+    // todo: change fixed width values
     always @ (*) begin
         case(write_addr)
             default          :  EIFR_wr_enable = { `EIC_TOTAL_WIDTH { 1'b0 } };
-            `EIC_REG_EIFR_0  :  EIFR_wr_enable = {  32'b0, ~32'b0 };
-            `EIC_REG_EIFR_1  :  EIFR_wr_enable = { ~32'b0,  32'b0 };
+            `EIC_REG_EIFR_0  :  EIFR_wr_enable = { `EIC_TOTAL_WIDTH { 1'b0 } } | (~32'b0);
+            `EIC_REG_EIFR_1  :  EIFR_wr_enable = { `EIC_TOTAL_WIDTH { 1'b0 } } | (~32'b0 << 16);
             `EIC_REG_EIFRS_0 :  EIFR_wr_enable = { 32'b0, write_data };
             `EIC_REG_EIFRS_1 :  EIFR_wr_enable = { write_data, 32'b0 };
-            `EIC_REG_EIFRR_0 :  
-            `EIC_REG_EIFRR_1 :  
+            `EIC_REG_EIFRC_0 :  EIFR_wr_enable = { 32'b0, write_data };
+            `EIC_REG_EIFRC_1 :  EIFR_wr_enable = { write_data, 32'b0 };
         endcase
 
         case(write_addr)
             default          :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b0 } };
-            `EIC_REG_EIFR_0,
-            `EIC_REG_EIFRS_0,
-            `EIC_REG_EIFRR_0 :  EIFR_wr_data = { 32'b0, write_data };
-            `EIC_REG_EIFR_1,
-            `EIC_REG_EIFRS_1,
-            `EIC_REG_EIFRR_1 :  EIFR_wr_data = { write_data, 32'b0 };
+            `EIC_REG_EIFR_0  :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b0 } } | (~32'b0);
+            `EIC_REG_EIFR_1  :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b0 } } | (~32'b0 << 16);
+            `EIC_REG_EIFRS_0 :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b1 } };
+            `EIC_REG_EIFRS_1 :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b1 } };
+            `EIC_REG_EIFRC_0 :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b0 } };
+            `EIC_REG_EIFRC_1 :  EIFR_wr_data = { `EIC_TOTAL_WIDTH { 1'b0 } };
         endcase
     end
 
