@@ -1,8 +1,8 @@
 
 `timescale 1ns / 100ps
 
-`define EIC_DIRECT_CHANNELS 5
-`define EIC_SENSE_CHANNELS  5
+`define EIC_DIRECT_CHANNELS 20
+`define EIC_SENSE_CHANNELS  20
 
 `include "mfp_eic_core.vh"
 
@@ -85,8 +85,14 @@ module test_eic;
             @(posedge HCLK);
             @(posedge HCLK);
 
-            @(posedge HCLK);
-            @(posedge HCLK);
+            eicWrite(`EIC_REG_EIMSK_0, 32'h03);
+            eicWrite(`EIC_REG_EIMSK_1, 32'h01);
+            eicWrite(`EIC_REG_EIMSK_1, 32'h00);
+            
+            eicRead(`EIC_REG_EIMSK_0);
+            eicRead(`EIC_REG_EIMSK_1);
+
+
 
             // @(posedge HCLK);    signal[0]   = 1'b1;
             // @(posedge HCLK);    signal[5]   = 1'b1;
