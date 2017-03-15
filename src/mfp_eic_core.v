@@ -106,8 +106,8 @@ module mfp_eic_core
             `EIC_REG_EIMSK_1  :  write_cmd = { `EIC_C_NONE, `EIC_C_NONE, `EIC_C_VAL1, `EIC_C_NONE, `EIC_C_NONE };
             `EIC_REG_EIFR_0   :  write_cmd = { `EIC_C_NONE, `EIC_C_NONE, `EIC_C_NONE, `EIC_C_SET0, `EIC_C_VAL0 };
             `EIC_REG_EIFR_1   :  write_cmd = { `EIC_C_NONE, `EIC_C_NONE, `EIC_C_NONE, `EIC_C_SET1, `EIC_C_VAL1 };
-            `EIC_REG_EIFRS_0  :  write_cmd = { `EIC_C_NONE, `EIC_C_NONE, `EIC_C_NONE, `EIC_C_SET0, `EIC_C_SET0 };
-            `EIC_REG_EIFRS_1  :  write_cmd = { `EIC_C_NONE, `EIC_C_NONE, `EIC_C_NONE, `EIC_C_SET1, `EIC_C_SET1 };
+            `EIC_REG_EIFRS_0  :  write_cmd = { `EIC_C_NONE, `EIC_C_NONE, `EIC_C_NONE, `EIC_C_VAL0, `EIC_C_VAL0 };
+            `EIC_REG_EIFRS_1  :  write_cmd = { `EIC_C_NONE, `EIC_C_NONE, `EIC_C_NONE, `EIC_C_VAL1, `EIC_C_VAL1 };
             `EIC_REG_EIFRC_0  :  write_cmd = { `EIC_C_NONE, `EIC_C_NONE, `EIC_C_NONE, `EIC_C_VAL0, `EIC_C_CLR0 };
             `EIC_REG_EIFRC_1  :  write_cmd = { `EIC_C_NONE, `EIC_C_NONE, `EIC_C_NONE, `EIC_C_VAL1, `EIC_C_CLR1 };
             `EIC_REG_EISMSK_0 :  write_cmd = { `EIC_C_NONE, `EIC_C_VAL0, `EIC_C_NONE, `EIC_C_NONE, `EIC_C_NONE };
@@ -211,9 +211,11 @@ module new_reg_value
     input       [       31 : 0 ] word,  //new data value
     input       [        2 : 0 ] cmd    //update command (see EIC_C_* defines)
 );
-    localparam BYTE0_SIZE = (USED > 32) ? 32 : USED;
-    localparam BYTE1_SIZE = (USED > 32) ? (USED - 32) : 0;
-    localparam BYTE1_MAX  = (BYTE1_SIZE > 0) ? (BYTE1_SIZE - 1) : 0;
+    localparam BYTE0_SIZE  = (USED > 32) ? 32 : USED;
+    localparam BYTE1_SIZE  = (USED > 32) ? (USED - 32) : 0;
+    localparam BYTE1_MAX   = (BYTE1_SIZE > 0) ? (BYTE1_SIZE - 1) : 0;
+    localparam BYTE1_START = (BYTE1_SIZE > 0) ? 32 : 0;
+    localparam BYTE1_END   = (BYTE1_SIZE > 0) ? (USED - 1) : 0;
 
     always @ (*) begin
         if(USED < 33)
@@ -229,12 +231,12 @@ module new_reg_value
         else 
             case(cmd)
                 default     : out = in;
-                `EIC_C_CLR0 : out = { in [ BYTE1_MAX : 0 ],    32'b0           };
-                `EIC_C_CLR1 : out = { { BYTE1_SIZE { 1'b0 } },      in [ 31 : 0 ]   };
-                `EIC_C_SET0 : out = { in [ BYTE1_MAX : 0 ],    ~32'b0          };
-                `EIC_C_SET1 : out = { { BYTE1_SIZE { 1'b1 } },      in [ 31 : 0 ]   };
-                `EIC_C_VAL0 : out = { in [ BYTE1_MAX : 0 ],    word            };
-                `EIC_C_VAL1 : out = { word [ BYTE1_MAX : 0 ],  in [ 31 : 0 ]   };
+                `EIC_C_CLR0 : out = { in [ BYTE1_END : BYTE1_START ],   32'b0           };
+                `EIC_C_CLR1 : out = { { BYTE1_SIZE { 1'b0 } },          in [ 31 : 0 ]   };
+                `EIC_C_SET0 : out = { in [ BYTE1_END : BYTE1_START ],   ~32'b0          };
+                `EIC_C_SET1 : out = { { BYTE1_SIZE { 1'b1 } },          in [ 31 : 0 ]   };
+                `EIC_C_VAL0 : out = { in [ BYTE1_END : BYTE1_START ],   word            };
+                `EIC_C_VAL1 : out = { word [ BYTE1_MAX : 0 ],           in [ 31 : 0 ]   };
             endcase
         end
 endmodule

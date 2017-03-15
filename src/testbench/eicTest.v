@@ -52,6 +52,14 @@ module test_eic;
         end
     endtask
 
+    task delay;
+        begin
+            @(posedge HCLK);
+            @(posedge HCLK);
+            @(posedge HCLK);
+        end
+    endtask
+
     mfp_eic_core eic
     (
         .CLK            ( HCLK          ),
@@ -75,6 +83,22 @@ module test_eic;
     initial begin
         begin
 
+            /*
+            `define EIC_REG_EICR        +
+            `define EIC_REG_EIMSK_0     +
+            `define EIC_REG_EIMSK_1     +
+            `define EIC_REG_EIFR_0      +
+            `define EIC_REG_EIFR_1      
+            `define EIC_REG_EIFRS_0     +
+            `define EIC_REG_EIFRS_1     
+            `define EIC_REG_EIFRC_0     
+            `define EIC_REG_EIFRC_1     +
+            `define EIC_REG_EISMSK_0    +
+            `define EIC_REG_EISMSK_1    
+            `define EIC_REG_EIIPR_0     +
+            `define EIC_REG_EIIPR_1     +
+            */
+
             signal  = 16'b0;
 
             HRESETn = 0;
@@ -85,25 +109,37 @@ module test_eic;
             @(posedge HCLK);
             @(posedge HCLK);
 
-            eicWrite(`EIC_REG_EISMSK_0, 32'h0f);
+            eicWrite(`EIC_REG_EICR, 32'h01);     //enable eic 
+            eicWrite(`EIC_REG_EISMSK_0, 32'h05); //any logical change for irq 1, 2 (pins 0, 1)
 
-            eicWrite(`EIC_REG_EIMSK_0, 32'h03);
-            eicWrite(`EIC_REG_EIMSK_1, 32'h01);
+            eicWrite(`EIC_REG_EIMSK_0, 32'h03); //enable irq 1, 2 (pins 0, 1)
+            eicWrite(`EIC_REG_EIMSK_1, 32'h01); //enable irq 33 (pin 32)
 
             eicRead(`EIC_REG_EIMSK_0);
             eicRead(`EIC_REG_EIMSK_1);
 
+            @(posedge HCLK);    signal[0]   = 1'b1;
+            @(posedge HCLK);    signal[1]   = 1'b1;
+            delay();
 
+            @(posedge HCLK);    signal[32]  = 1'b1;
+            @(posedge HCLK);    signal[32]  = 1'b0;
+            delay();
 
-            // @(posedge HCLK);    signal[0]   = 1'b1;
-            // @(posedge HCLK);    signal[5]   = 1'b1;
-            // @(posedge HCLK);    signal[12]  = 1'b1;
+            eicRead(`EIC_REG_EIFR_1);
 
-            // @(posedge HCLK);    signal[12]  = 1'b0;
-            // @(posedge HCLK);    signal[5]   = 1'b0;
+            eicWrite(`EIC_REG_EIFRC_1, 32'h01); //clear irq 33 (pin 32)
 
-            @(posedge HCLK);
-            @(posedge HCLK);
+            eicRead(`EIC_REG_EIFR_0);
+            delay();
+
+            eicWrite(`EIC_REG_EIFR_0, 32'h01); //set EIFR word0
+            eicRead(`EIC_REG_EIFR_0);
+            delay();
+
+            eicWrite(`EIC_REG_EIFRS_0, 32'h04); //set EIFR bit3
+            eicRead(`EIC_REG_EIFR_0);
+            delay();
         end
         $stop;
         $finish;
