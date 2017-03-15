@@ -19,7 +19,7 @@
 `define EIC_C_VAL0  3'b101   //set word0
 `define EIC_C_VAL1  3'b110   //set word1
 
-module eic
+module mfp_eic_core
 (
     input       CLK,
     input       RESETn,

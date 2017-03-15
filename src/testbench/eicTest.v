@@ -52,7 +52,7 @@ module test_eic;
         end
     endtask
 
-    eic eic
+    mfp_eic_core eic
     (
         .CLK            ( HCLK          ),
         .RESETn         ( HRESETn       ),
@@ -85,10 +85,11 @@ module test_eic;
             @(posedge HCLK);
             @(posedge HCLK);
 
+            eicWrite(`EIC_REG_EISMSK_0, 32'h0f);
+
             eicWrite(`EIC_REG_EIMSK_0, 32'h03);
             eicWrite(`EIC_REG_EIMSK_1, 32'h01);
-            eicWrite(`EIC_REG_EIMSK_1, 32'h00);
-            
+
             eicRead(`EIC_REG_EIMSK_0);
             eicRead(`EIC_REG_EIMSK_1);
 
