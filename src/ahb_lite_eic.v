@@ -4,37 +4,11 @@
  * https://github.com/zhelnio/ahb_lite_eic
  */  
 
-//reg addrs
-`define EIC_REG_NONE        0   // no register selected
-`define EIC_REG_EICR        1   // external interrupt control register
-`define EIC_REG_EIMSK_0     2   // external interrupt mask register (31 - 0 )
-`define EIC_REG_EIMSK_1     3   // external interrupt mask register (63 - 32)
-`define EIC_REG_EIFR_0      4   // external interrupt flag register (31 - 0 )
-`define EIC_REG_EIFR_1      5   // external interrupt flag register (63 - 32)
-`define EIC_REG_EIFRS_0     6   // external interrupt flag register, bit set (31 - 0 )
-`define EIC_REG_EIFRS_1     7   // external interrupt flag register, bit set (63 - 32)
-`define EIC_REG_EIFRC_0     8   // external interrupt flag register, bit clear (31 - 0 )
-`define EIC_REG_EIFRC_1     9   // external interrupt flag register, bit clear (63 - 32)
-`define EIC_REG_EISMSK_0    10  // external interrupt sense mask register (31 - 0 )
-`define EIC_REG_EISMSK_1    11  // external interrupt sense mask register (63 - 32)
-`define EIC_REG_EIIPR_0     12  // external interrupt input pin register (31 - 0 )
-`define EIC_REG_EIIPR_1     13  // external interrupt input pin register (63 - 32)
+`include "mfp_eic_core.vh"
 
 //reg width params
 `define EIC_EICR_WIDTH      1   // control register width
-`define EIC_ADDR_WIDTH      4   // register addr width
 `define EIC_ALIGNED_WIDTH   64  // summary total aligned reg width
-
-
-//default interrupt count
-`ifndef EIC_DIRECT_CHANNELS
-    `define EIC_DIRECT_CHANNELS 31  // 0-31
-`endif
-`ifndef EIC_SENSE_CHANNELS
-    `define EIC_SENSE_CHANNELS  32  // 0-32
-`endif
-
-`define EIC_CHANNELS        (`EIC_DIRECT_CHANNELS + `EIC_SENSE_CHANNELS)
 
 //new_reg_value module commands
 `define EIC_C_NONE  3'b000   //no changes
@@ -75,10 +49,10 @@ module eic
     wire       [ `EIC_ALIGNED_WIDTH - 1 : 0  ]  EIIPR;
 
     //register involved part
-    reg                                   EICR_inv;
-    reg        [ `EIC_CHANNELS - 1 : 0 ]  EIMSK_inv;
-    reg        [ `EIC_CHANNELS - 1 : 0 ]  EISMSK_inv;
-    wire       [ `EIC_CHANNELS - 1 : 0 ]  EIFR_inv;
+    reg        [ `EIC_EICR_WIDTH - 1 : 0 ]  EICR_inv;
+    reg        [ `EIC_CHANNELS   - 1 : 0 ]  EIMSK_inv;
+    reg        [ `EIC_CHANNELS   - 1 : 0 ]  EISMSK_inv;
+    wire       [ `EIC_CHANNELS   - 1 : 0 ]  EIFR_inv;
 
     //register align and combination
     assign EIMSK  = { { `EIC_ALIGNED_WIDTH - `EIC_CHANNELS { 1'b0 } }, EIMSK_inv };
