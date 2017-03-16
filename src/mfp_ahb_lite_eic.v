@@ -65,7 +65,7 @@ module mfp_ahb_lite_eic
             write_enable <= NeedWrite;
         end
 
-    mfp_eic_core eic
+    mfp_eic_core eic_core
     (
         .CLK            ( HCLK          ),
         .RESETn         ( HRESETn       ),
