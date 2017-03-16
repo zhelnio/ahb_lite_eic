@@ -4,6 +4,8 @@
  * https://github.com/zhelnio/ahb_lite_eic
  */  
 
+`include "mfp_eic_core.vh"
+
 module mfp_ahb_lite_eic
 (
     //ABB-Lite side
@@ -25,23 +27,42 @@ module mfp_ahb_lite_eic
 
     //Interrupt side
     input      [ `EIC_CHANNELS-1 : 0 ] signal,
+
+    //CPU side
     output     [ 17 : 1 ]              EIC_Offset,
     output     [  3 : 0 ]              EIC_ShadowSet,
     output     [  7 : 0 ]              EIC_Interrupt,
     output     [  5 : 0 ]              EIC_Vector,
     output                             EIC_Present
 );
+    assign      HRESP  = 1'b0;
+    assign      HREADY = 1'b1;
 
-    wire [ `EIC_ADDR_WIDTH - 1 : 0 ] read_addr;
+    reg  [ `EIC_ADDR_WIDTH - 1 : 0 ] read_addr;
     wire [                  31 : 0 ] read_data;
-    wire [ `EIC_ADDR_WIDTH - 1 : 0 ] write_addr;
-    reg  [                  31 : 0 ] write_data;
-    wire                             write_enable;
+    reg  [ `EIC_ADDR_WIDTH - 1 : 0 ] write_addr;
+    wire [                  31 : 0 ] write_data;
+    reg                              write_enable;
 
-    wire NeedAction = HTRANS != HTRANS_IDLE && HSEL;
+    wire [ `EIC_ADDR_WIDTH - 1 : 0 ] ADDR = HADDR [ `EIC_ADDR_WIDTH + 2 : 2 ];
 
-    //STOPPED HERE! (continue tomorrow)
+    wire    NeedRead   = HTRANS != HTRANS_IDLE && HSEL;
+    wire    NeedWrite  = NeedRead & HWRITE;
 
+    assign  write_data = HWDATA;
+
+    always @ (posedge HCLK)
+        if(~HRESETn)
+            write_enable <= 1'b0;
+        else begin
+            if(NeedRead)
+                read_addr <= ADDR;
+            HRDATA <= read_data;
+
+            if(NeedWrite)
+                write_addr <= ADDR;
+            write_enable <= NeedWrite;
+        end
 
     mfp_eic_core eic
     (
@@ -60,69 +81,4 @@ module mfp_ahb_lite_eic
         .EIC_Present    ( EIC_Present   )
     );
 
-    
-
-
-/*
-    parameter   S_INIT      = 0,
-                S_IDLE      = 1,
-                S_READ      = 2,
-                S_WRITE     = 3;
-    
-    reg  [ 1:0 ]    State, Next;
-
-    assign      HRESP  = 1'b0;
-    assign      HREADY = (State ==  S_IDLE);
-
-    always @ (posedge HCLK) begin
-        if (~HRESETn)
-            State <= S_INIT;
-        else
-            State <= Next;
-    end
-
-    reg  [ 2:0 ]    ADDR_old;
-    wire [ 2:0 ]    ADDR = HADDR [ 4:2 ];
-    wire [ 7:0 ]    ReadData;
-
-    parameter       HTRANS_IDLE       = 2'b0;
-    wire            NeedAction = HTRANS != HTRANS_IDLE && HSEL;
-
-    always @ (*) begin
-        //State change decision
-        case(State)
-            default     :   Next = S_IDLE;
-            S_IDLE      :   Next = ~NeedAction  ? S_IDLE : (
-                                    HWRITE      ? S_WRITE : S_READ );
-        endcase
-    end
-
-    always @ (posedge HCLK) begin
-        case(State)
-            S_INIT      :   ;
-            S_IDLE      :   if(HSEL) ADDR_old <= ADDR;
-            S_READ      :   HRDATA <= { 24'b0, ReadData};
-            S_WRITE     :   ;
-        endcase
-    end
-
-    wire [ 7:0 ]    WriteData   = HWDATA [ 7:0 ];
-    wire [ 2:0 ]    ActionAddr;
-    wire            WriteAction;
-    wire            ReadAction;
-    reg  [ 10:0 ]   conf;
-
-    assign { ReadAction, WriteAction, ActionAddr } = conf;
-
-    always @ (*) begin
-        //io
-        case(State)
-            default     :   conf = { 2'b00, 8'b0     };
-            S_READ      :   conf = { 2'b10, ADDR     };
-            S_WRITE     :   conf = { 2'b01, ADDR_old };
-        endcase
-    end
-*/
-
 endmodule
-
