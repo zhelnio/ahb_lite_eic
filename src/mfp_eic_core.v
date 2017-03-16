@@ -19,6 +19,9 @@
 `define EIC_C_VAL0  3'b101   //set word0
 `define EIC_C_VAL1  3'b110   //set word1
 
+// reg bits
+`define EICR_EE     1'b0     //EIC enabled
+
 module mfp_eic_core
 (
     input       CLK,
@@ -61,7 +64,7 @@ module mfp_eic_core
     assign EIIPR  = { { `EIC_ALIGNED_WIDTH - `EIC_CHANNELS { 1'b0 } }, signal };
 
     assign EICR         = { { 32 - `EIC_EICR_WIDTH { 1'b0 } }, EICR_inv };
-    assign EIC_Present  = EICR_inv[0];
+    assign EIC_Present  = EICR_inv[`EICR_EE];
 
     //register read operations
     always @ (*)
@@ -134,6 +137,8 @@ module mfp_eic_core
 
     //interrupt input logic (signal -> request)
     wire [ `EIC_SENSE_CHANNELS - 1 : 0  ] sensed;
+    wire [ `EIC_CHANNELS       - 1 : 0  ] mask = EICR_inv[`EICR_EE] ? EIMSK_inv 
+                                                                    : { `EIC_CHANNELS {1'b0}};
     generate 
         genvar i;
 
@@ -152,7 +157,7 @@ module mfp_eic_core
             (
                 .CLK        ( CLK                ),
                 .RESETn     ( RESETn             ),
-                .signalMask ( EIMSK_inv      [i] ),
+                .signalMask ( mask           [i] ),
                 .signalIn   ( sensed         [i] ),
                 .requestWR  ( EIFR_wr_enable [i] ),
                 .requestIn  ( EIFR_wr_data   [i] ),
@@ -166,7 +171,7 @@ module mfp_eic_core
             (
                 .CLK        ( CLK                ),
                 .RESETn     ( RESETn             ),
-                .signalMask ( EIMSK_inv      [i] ),
+                .signalMask ( mask           [i] ),
                 .signalIn   ( signal         [i] ),
                 .requestWR  ( EIFR_wr_enable [i] ),
                 .requestIn  ( EIFR_wr_data   [i] ),
