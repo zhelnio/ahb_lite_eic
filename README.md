@@ -1,6 +1,7 @@
 # alb_lite_iec
-external interrupt controller for MIPSfpga+ system
+External Interrupt Controller for MIPSfpga+ system
 
+## Main features
 - very simple;
 - up to 64 interrupts with independent interrupt vectors;
 - the count of interrupts can be customized;
